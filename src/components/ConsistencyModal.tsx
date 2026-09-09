@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useStorageStats } from '@/hooks/useStorageStats';
-import { getLastNDays, parseDate, formatMediumDate, getTodayDateString } from '@/lib/dateUtils';
+import { getLastNDays, formatMediumDate, getTodayDateString } from '@/lib/dateUtils';
 import { X, Flame, Award, CheckCircle2, Calendar, ArrowUpRight } from 'lucide-react';
 
 interface ConsistencyModalProps {
@@ -36,7 +36,7 @@ export function ConsistencyModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
           <div>
-            <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+            <h2 className="text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-emerald-500" />
               <span>Consistency & Streaks</span>
             </h2>
@@ -59,8 +59,8 @@ export function ConsistencyModal({
               <Flame className="w-3.5 h-3.5 text-amber-500" />
               <span>Current Streak</span>
             </div>
-            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {stats.currentStreak} <span className="text-xs font-normal text-zinc-400">days</span>
+            <div className="text-2xl font-light tracking-tight text-zinc-900 dark:text-zinc-50 font-mono">
+              {stats.currentStreak} <span className="text-xs font-normal text-zinc-400 font-sans">days</span>
             </div>
           </div>
 
@@ -69,8 +69,8 @@ export function ConsistencyModal({
               <Award className="w-3.5 h-3.5 text-purple-500" />
               <span>Best Streak</span>
             </div>
-            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {stats.bestStreak} <span className="text-xs font-normal text-zinc-400">days</span>
+            <div className="text-2xl font-light tracking-tight text-zinc-900 dark:text-zinc-50 font-mono">
+              {stats.bestStreak} <span className="text-xs font-normal text-zinc-400 font-sans">days</span>
             </div>
           </div>
 
@@ -79,7 +79,7 @@ export function ConsistencyModal({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               <span>Tasks Done</span>
             </div>
-            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <div className="text-2xl font-light tracking-tight text-zinc-900 dark:text-zinc-50 font-mono">
               {stats.completedTasksCount}
             </div>
           </div>
@@ -89,7 +89,7 @@ export function ConsistencyModal({
               <Calendar className="w-3.5 h-3.5 text-blue-500" />
               <span>Days Tracked</span>
             </div>
-            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <div className="text-2xl font-light tracking-tight text-zinc-900 dark:text-zinc-50 font-mono">
               {stats.totalDays}
             </div>
           </div>
@@ -113,14 +113,13 @@ export function ConsistencyModal({
             {pastDays.map((d) => {
               const sum = summaryMap.get(d);
               const done = sum ? sum.completedTodos : 0;
-              const hasFocus = sum?.oneBigThingDone;
               const isCurrent = d === currentDate;
               const isTodayDate = d === today;
 
               let bgClass = 'bg-zinc-200/70 dark:bg-zinc-800/70';
-              if (done >= 4 || (done >= 2 && hasFocus)) {
+              if (done >= 4) {
                 bgClass = 'bg-emerald-600 dark:bg-emerald-400 text-white';
-              } else if (done >= 2 || hasFocus) {
+              } else if (done >= 2) {
                 bgClass = 'bg-emerald-400 dark:bg-emerald-600 text-white';
               } else if (done >= 1) {
                 bgClass = 'bg-emerald-200 dark:bg-emerald-900 text-emerald-900';
@@ -130,7 +129,7 @@ export function ConsistencyModal({
                 <button
                   key={d}
                   onClick={() => handleDayClick(d)}
-                  title={`${formatMediumDate(d)}: ${done} tasks done${hasFocus ? ', Focus achieved' : ''}`}
+                  title={`${formatMediumDate(d)}: ${done} tasks done`}
                   className={`w-3.5 h-3.5 rounded-xs transition-transform hover:scale-125 relative ${bgClass} ${
                     isCurrent ? 'ring-2 ring-zinc-900 dark:ring-zinc-100 ring-offset-1 ring-offset-white dark:ring-offset-zinc-900' : ''
                   } ${isTodayDate ? 'border border-emerald-500' : ''}`}

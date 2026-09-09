@@ -9,6 +9,10 @@ import {
   getPreviousDate,
   getNextDate,
   formatMediumDate,
+  getCurrentWeekString,
+  getCurrentMonthString,
+  getWeekDateRange,
+  formatMonthYear,
 } from '@/lib/dateUtils';
 import {
   Search,
@@ -97,6 +101,26 @@ export function CommandPalette({
       subtitle: formatMediumDate(tomorrow),
       icon: Calendar,
       action: () => navigateToDay(tomorrow),
+    },
+    {
+      id: 'week',
+      title: 'Go to This Week',
+      subtitle: getWeekDateRange(getCurrentWeekString()).label,
+      icon: Calendar,
+      action: () => {
+        onClose();
+        router.push(`/week/${getCurrentWeekString()}`);
+      },
+    },
+    {
+      id: 'month',
+      title: 'Go to This Month',
+      subtitle: formatMonthYear(getCurrentMonthString()),
+      icon: Calendar,
+      action: () => {
+        onClose();
+        router.push(`/month/${getCurrentMonthString()}`);
+      },
     },
     {
       id: 'streaks',

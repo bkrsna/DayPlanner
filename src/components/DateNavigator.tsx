@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   formatFullDate,
+  formatMediumDate,
   getRelativeDateLabel,
   getPreviousDate,
   getNextDate,
@@ -35,10 +36,12 @@ export function DateNavigator({ currentDate }: DateNavigatorProps) {
   const isToday = currentDate === today;
   const relativeLabel = getRelativeDateLabel(currentDate);
 
-  useEffect(() => {
+  // When opening calendar, ensure month matches current date and logged dates are fresh
+  const handleToggleCalendar = () => {
     setCalendarMonth(parseDate(currentDate));
     setLoggedDates(new Set(getAllSavedDates()));
-  }, [currentDate]);
+    setIsCalendarOpen((prev) => !prev);
+  };
 
   // Close calendar popover on outside click
   useEffect(() => {
@@ -88,84 +91,82 @@ export function DateNavigator({ currentDate }: DateNavigatorProps) {
   }
 
   return (
-    <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-5">
+    <div className="relative flex items-center gap-2 sm:gap-3 shrink-0">
       {/* Date Title & Relative Badge */}
-      <div className="flex items-center gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {formatFullDate(currentDate)}
-            </h1>
-            {relativeLabel && (
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  isToday
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/50 dark:border-emerald-800'
-                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-                }`}
-              >
-                {relativeLabel}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Keyboard navigation: <kbd className="px-1 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 font-mono">[</kbd> Prev &bull; <kbd className="px-1 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 font-mono">]</kbd> Next &bull; <kbd className="px-1 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 font-mono">T</kbd> Today
-          </p>
-        </div>
+      <div className="flex items-center gap-2">
+        <span className="hidden sm:inline font-normal sm:font-medium text-sm sm:text-base tracking-tight text-zinc-900 dark:text-zinc-50 select-none">
+          {formatFullDate(currentDate)}
+        </span>
+        <span className="sm:hidden font-normal sm:font-medium text-sm tracking-tight text-zinc-900 dark:text-zinc-50 select-none">
+          {formatMediumDate(currentDate)}
+        </span>
+
+        {relativeLabel && (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+              isToday
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60'
+            }`}
+          >
+            {relativeLabel}
+          </span>
+        )}
       </div>
 
-      {/* Navigation Controls */}
-      <div className="flex items-center gap-1.5 self-start sm:self-auto">
-        <button
-          onClick={handlePrevDay}
-          title="Previous Day (Hotkey: [ )"
-          className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        {!isToday && (
+      {/* Navigation Controls: Arrows, Jump Today, Calendar Picker */}
+      <div className="flex items-center gap-1">
+        <div className="inline-flex items-center rounded-lg bg-zinc-100 dark:bg-zinc-800/80 p-0.5 border border-zinc-200/70 dark:border-zinc-700/70">
           <button
-            onClick={handleJumpToday}
-            title="Jump to Today (Hotkey: T)"
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-700/60"
+            onClick={handlePrevDay}
+            title="Previous Day (Hotkey: [ )"
+            className="p-1 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-700 transition-all shadow-2xs"
           >
-            <RotateCcw className="w-3 h-3 text-zinc-500" />
-            Today
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-        )}
 
-        <button
-          onClick={handleNextDay}
-          title="Next Day (Hotkey: ] )"
-          className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+          {!isToday && (
+            <button
+              onClick={handleJumpToday}
+              title="Jump to Today (Hotkey: T)"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-700 rounded transition-all shadow-2xs"
+            >
+              <RotateCcw className="w-3 h-3 text-zinc-500" />
+              <span className="hidden md:inline">Today</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleNextDay}
+            title="Next Day (Hotkey: ] )"
+            className="p-1 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-700 transition-all shadow-2xs"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Mini Calendar Popover Button */}
         <div className="relative">
           <button
-            onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+            onClick={handleToggleCalendar}
             title="Pick a Date"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`p-1.5 rounded-lg border transition-colors ${
               isCalendarOpen
                 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent'
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                : 'border-zinc-200/70 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
             }`}
           >
             <CalendarIcon className="w-3.5 h-3.5" />
-            <span>Calendar</span>
           </button>
 
           {/* Popover */}
           {isCalendarOpen && (
             <div
               ref={popoverRef}
-              className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl bg-white dark:bg-zinc-900 p-3 shadow-xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-100"
+              className="absolute left-0 top-full mt-2 z-50 w-72 rounded-2xl bg-white dark:bg-zinc-900 p-3.5 shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-100"
             >
               {/* Header: Month switcher */}
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2.5">
                 <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
@@ -174,7 +175,7 @@ export function DateNavigator({ currentDate }: DateNavigatorProps) {
                     onClick={() =>
                       setCalendarMonth(new Date(year, month - 1, 1))
                     }
-                    className="p-1 rounded text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    className="p-1 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
@@ -182,13 +183,13 @@ export function DateNavigator({ currentDate }: DateNavigatorProps) {
                     onClick={() =>
                       setCalendarMonth(new Date(year, month + 1, 1))
                     }
-                    className="p-1 rounded text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    className="p-1 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setIsCalendarOpen(false)}
-                    className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 ml-1"
+                    className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 ml-1"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

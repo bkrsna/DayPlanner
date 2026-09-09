@@ -52,6 +52,24 @@ export function useKeyboardShortcuts({
         e.preventDefault();
         router.push(`/day/${getTodayDateString()}`);
       }
+
+      // 1 -> Day view
+      if (e.key === '1') {
+        e.preventDefault();
+        router.push(`/day/${getTodayDateString()}`);
+      }
+
+      // 2 -> Week view
+      if (e.key === '2') {
+        e.preventDefault();
+        router.push('/week');
+      }
+
+      // 3 -> Month view
+      if (e.key === '3') {
+        e.preventDefault();
+        router.push('/month');
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown);

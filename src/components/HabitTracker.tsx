@@ -53,7 +53,7 @@ export function HabitTracker({
   return (
     <div className="space-y-4">
       {/* Habits Card */}
-      <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 p-5 shadow-xs">
+      <div className="rounded-2xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-900/70 p-5 shadow-xs">
         <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
@@ -147,7 +147,7 @@ export function HabitTracker({
       </div>
 
       {/* Daily Vitals (Mood & Energy) */}
-      <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 p-5 shadow-xs">
+      <div className="rounded-2xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-900/70 p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-100 dark:border-zinc-800/80">
           <Smile className="w-4 h-4 text-amber-500" />
           <h3 className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">

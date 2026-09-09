@@ -93,7 +93,7 @@ export function ExportImportModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
           <div>
-            <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+            <h2 className="text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
               <Download className="w-5 h-5 text-indigo-500" />
               <span>Data Portability & Backup</span>
             </h2>
