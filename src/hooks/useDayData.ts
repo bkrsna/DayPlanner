@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { DayData, Priority, TodoItem, DayVitals, DayReflections } from '@/types';
+import { DayData, Priority, TodoItem, SubTask, DayVitals, DayReflections } from '@/types';
 import {
   getDayData,
   saveDayData,
@@ -104,16 +104,19 @@ export function useDayData(date: string) {
 
   // Todos
   const addTodo = useCallback(
-    (text: string, priority: Priority = 'medium', tag?: string, estimate?: string) => {
+    (text: string, priority: Priority = 'medium', tag?: string, estimate?: string, isSpecial: boolean = false) => {
       if (!text.trim()) return;
       const newTodo: TodoItem = {
         id: `todo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         text: text.trim(),
         completed: false,
+        status: 'todo',
         priority,
         tag: tag?.trim() ? tag.trim().toLowerCase() : undefined,
         estimate: estimate?.trim() || undefined,
+        subtasks: [],
         createdAt: new Date().toISOString(),
+        isSpecial: Boolean(isSpecial),
       };
       mutateImmediate((prev) => ({
         ...prev,
@@ -127,12 +130,109 @@ export function useDayData(date: string) {
     (id: string) => {
       mutateImmediate((prev) => ({
         ...prev,
+        todos: prev.todos.map((t) => {
+          if (t.id !== id) return t;
+          const nextCompleted = !t.completed;
+          return {
+            ...t,
+            completed: nextCompleted,
+            status: nextCompleted ? 'completed' : 'todo',
+            completedAt: nextCompleted ? new Date().toISOString() : undefined,
+          };
+        }),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const toggleInProgress = useCallback(
+    (id: string) => {
+      mutateImmediate((prev) => ({
+        ...prev,
+        todos: prev.todos.map((t) => {
+          if (t.id !== id) return t;
+          const isCurrentlyInProgress = t.status === 'in_progress';
+          return {
+            ...t,
+            status: isCurrentlyInProgress ? 'todo' : 'in_progress',
+            completed: false,
+            completedAt: undefined,
+          };
+        }),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const addSubTask = useCallback(
+    (todoId: string, text: string) => {
+      if (!text.trim()) return;
+      const newSub: SubTask = {
+        id: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        text: text.trim(),
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      mutateImmediate((prev) => ({
+        ...prev,
         todos: prev.todos.map((t) =>
-          t.id === id
+          t.id === todoId
+            ? { ...t, subtasks: [...(t.subtasks || []), newSub] }
+            : t
+        ),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const toggleSubTask = useCallback(
+    (todoId: string, subtaskId: string) => {
+      mutateImmediate((prev) => ({
+        ...prev,
+        todos: prev.todos.map((t) => {
+          if (t.id !== todoId) return t;
+          const updatedSubtasks = (t.subtasks || []).map((sub) =>
+            sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+          );
+          return {
+            ...t,
+            subtasks: updatedSubtasks,
+          };
+        }),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const deleteSubTask = useCallback(
+    (todoId: string, subtaskId: string) => {
+      mutateImmediate((prev) => ({
+        ...prev,
+        todos: prev.todos.map((t) =>
+          t.id === todoId
             ? {
                 ...t,
-                completed: !t.completed,
-                completedAt: !t.completed ? new Date().toISOString() : undefined,
+                subtasks: (t.subtasks || []).filter((sub) => sub.id !== subtaskId),
+              }
+            : t
+        ),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const updateSubTask = useCallback(
+    (todoId: string, subtaskId: string, text: string) => {
+      if (!text.trim()) return;
+      mutateImmediate((prev) => ({
+        ...prev,
+        todos: prev.todos.map((t) =>
+          t.id === todoId
+            ? {
+                ...t,
+                subtasks: (t.subtasks || []).map((sub) =>
+                  sub.id === subtaskId ? { ...sub, text: text.trim() } : sub
+                ),
               }
             : t
         ),
@@ -160,6 +260,43 @@ export function useDayData(date: string) {
     },
     [mutateImmediate]
   );
+
+  const reorderTodos = useCallback(
+    (sourceId: string, targetId: string, position: 'before' | 'after' = 'before') => {
+      if (sourceId === targetId) return;
+      mutateImmediate((prev) => {
+        const todos = [...prev.todos];
+        const sourceIndex = todos.findIndex((t) => t.id === sourceId);
+        if (sourceIndex === -1) return prev;
+        const [movedItem] = todos.splice(sourceIndex, 1);
+
+        const targetIndex = todos.findIndex((t) => t.id === targetId);
+        if (targetIndex === -1) return prev;
+
+        const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
+        todos.splice(insertIndex, 0, movedItem);
+        return {
+          ...prev,
+          todos,
+        };
+      });
+    },
+    [mutateImmediate]
+  );
+
+  const clearCompletedTodos = useCallback(() => {
+    mutateImmediate((prev) => ({
+      ...prev,
+      todos: prev.todos.filter((t) => !(t.completed && !t.isSpecial)),
+    }));
+  }, [mutateImmediate]);
+
+  const clearCompletedSpecialTodos = useCallback(() => {
+    mutateImmediate((prev) => ({
+      ...prev,
+      todos: prev.todos.filter((t) => !(t.completed && t.isSpecial)),
+    }));
+  }, [mutateImmediate]);
 
   // Habits
   const toggleHabit = useCallback(
@@ -211,6 +348,17 @@ export function useDayData(date: string) {
       }));
     },
     [mutateImmediate]
+  );
+
+  // Journal (debounced)
+  const updateJournal = useCallback(
+    (text: string) => {
+      debouncedSave((prev) => ({
+        ...prev,
+        journal: text,
+      }));
+    },
+    [debouncedSave]
   );
 
   // Reflections (debounced)
@@ -267,12 +415,21 @@ export function useDayData(date: string) {
     toggleOneBigThing,
     addTodo,
     toggleTodo,
+    toggleInProgress,
+    addSubTask,
+    toggleSubTask,
+    deleteSubTask,
+    updateSubTask,
     deleteTodo,
     updateTodo,
+    reorderTodos,
+    clearCompletedTodos,
+    clearCompletedSpecialTodos,
     toggleHabit,
     addCustomHabit,
     removeHabit,
     updateVitals,
+    updateJournal,
     updateReflections,
     rolloverUnfinishedTasks,
     hasPreviousUnfinishedTasks,
