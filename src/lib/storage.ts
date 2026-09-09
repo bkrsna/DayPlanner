@@ -1,9 +1,12 @@
-import { DayData, DaySummary, HabitItem } from '@/types';
-import { isValidDateString, parseDate } from './dateUtils';
+import { DayData, DaySummary, HabitItem, WeekData, MonthData } from '@/types';
+import { isValidDateString, isValidWeekString, isValidMonthString } from './dateUtils';
 
 const STORAGE_PREFIX = 'daily_goal_tracker_day_';
 const INDEX_KEY = 'daily_goal_tracker_index';
-const SETTINGS_KEY = 'daily_goal_tracker_settings';
+const WEEK_STORAGE_PREFIX = 'daily_goal_tracker_week_';
+const WEEK_INDEX_KEY = 'daily_goal_tracker_week_index';
+const MONTH_STORAGE_PREFIX = 'daily_goal_tracker_month_';
+const MONTH_INDEX_KEY = 'daily_goal_tracker_month_index';
 
 export const DEFAULT_HABITS: Omit<HabitItem, 'id' | 'completed'>[] = [
   { title: '💧 Drink 2L Water', category: 'health' },
@@ -22,6 +25,7 @@ export function getDefaultDayData(date: string): DayData {
     oneBigThing: '',
     oneBigThingDone: false,
     todos: [],
+    journal: '',
     habits: DEFAULT_HABITS.map((h, i) => ({
       id: `habit-${i + 1}`,
       title: h.title,
@@ -86,6 +90,7 @@ export function getDayData(date: string): DayData {
       ...defaults,
       ...data,
       todos: Array.isArray(data.todos) ? data.todos : [],
+      journal: typeof data.journal === 'string' ? data.journal : data.reflections?.notes || '',
       habits: Array.isArray(data.habits) && data.habits.length > 0 ? data.habits : defaults.habits,
       vitals: { ...defaults.vitals, ...(data.vitals || {}) },
       reflections: { ...defaults.reflections, ...(data.reflections || {}) },
@@ -130,6 +135,190 @@ export function getPreviousActiveDayData(currentDate: string): DayData | null {
   return getDayData(lastDate);
 }
 
+// ---------------------------------------------------------------------------
+// Week Storage Operations
+// ---------------------------------------------------------------------------
+
+export function getDefaultWeekData(week: string): WeekData {
+  const now = new Date().toISOString();
+  return {
+    week,
+    createdAt: now,
+    updatedAt: now,
+    todos: [],
+    journal: '',
+  };
+}
+
+export function getAllSavedWeeks(): string[] {
+  if (!isLocalStorageAvailable()) return [];
+  try {
+    const raw = localStorage.getItem(WEEK_INDEX_KEY);
+    if (!raw) return [];
+    const parsed: string[] = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.sort() : [];
+  } catch (err) {
+    console.error('Failed to read week index from localStorage:', err);
+    return [];
+  }
+}
+
+function updateWeekIndex(week: string): void {
+  if (!isLocalStorageAvailable()) return;
+  try {
+    const weeks = new Set(getAllSavedWeeks());
+    weeks.add(week);
+    localStorage.setItem(WEEK_INDEX_KEY, JSON.stringify(Array.from(weeks).sort()));
+  } catch (err) {
+    console.error('Failed to update week index:', err);
+  }
+}
+
+export function getWeekData(week: string): WeekData {
+  if (!isLocalStorageAvailable()) {
+    return getDefaultWeekData(week);
+  }
+  try {
+    const raw = localStorage.getItem(`${WEEK_STORAGE_PREFIX}${week}`);
+    if (!raw) return getDefaultWeekData(week);
+    const data: WeekData = JSON.parse(raw);
+    const defaults = getDefaultWeekData(week);
+    return {
+      ...defaults,
+      ...data,
+      todos: Array.isArray(data.todos) ? data.todos : [],
+      journal: typeof data.journal === 'string' ? data.journal : '',
+    };
+  } catch (err) {
+    console.error(`Failed to parse data for week ${week}:`, err);
+    return getDefaultWeekData(week);
+  }
+}
+
+export function saveWeekData(data: WeekData): void {
+  if (!isLocalStorageAvailable()) return;
+  try {
+    const updatedData: WeekData = {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`${WEEK_STORAGE_PREFIX}${data.week}`, JSON.stringify(updatedData));
+    updateWeekIndex(data.week);
+
+    if (typeof window !== 'undefined') {
+      queueMicrotask(() => {
+        window.dispatchEvent(
+          new CustomEvent('daily_tracker_data_change', {
+            detail: { type: 'week', week: data.week, data: updatedData },
+          })
+        );
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to save data for week ${data.week}:`, err);
+  }
+}
+
+export function getPreviousActiveWeekData(currentWeek: string): WeekData | null {
+  const weeks = getAllSavedWeeks();
+  const priorWeeks = weeks.filter((w) => w < currentWeek).sort();
+  if (priorWeeks.length === 0) return null;
+  const lastWeek = priorWeeks[priorWeeks.length - 1];
+  return getWeekData(lastWeek);
+}
+
+// ---------------------------------------------------------------------------
+// Month Storage Operations
+// ---------------------------------------------------------------------------
+
+export function getDefaultMonthData(month: string): MonthData {
+  const now = new Date().toISOString();
+  return {
+    month,
+    createdAt: now,
+    updatedAt: now,
+    todos: [],
+    journal: '',
+  };
+}
+
+export function getAllSavedMonths(): string[] {
+  if (!isLocalStorageAvailable()) return [];
+  try {
+    const raw = localStorage.getItem(MONTH_INDEX_KEY);
+    if (!raw) return [];
+    const parsed: string[] = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.sort() : [];
+  } catch (err) {
+    console.error('Failed to read month index from localStorage:', err);
+    return [];
+  }
+}
+
+function updateMonthIndex(month: string): void {
+  if (!isLocalStorageAvailable()) return;
+  try {
+    const months = new Set(getAllSavedMonths());
+    months.add(month);
+    localStorage.setItem(MONTH_INDEX_KEY, JSON.stringify(Array.from(months).sort()));
+  } catch (err) {
+    console.error('Failed to update month index:', err);
+  }
+}
+
+export function getMonthData(month: string): MonthData {
+  if (!isLocalStorageAvailable()) {
+    return getDefaultMonthData(month);
+  }
+  try {
+    const raw = localStorage.getItem(`${MONTH_STORAGE_PREFIX}${month}`);
+    if (!raw) return getDefaultMonthData(month);
+    const data: MonthData = JSON.parse(raw);
+    const defaults = getDefaultMonthData(month);
+    return {
+      ...defaults,
+      ...data,
+      todos: Array.isArray(data.todos) ? data.todos : [],
+      journal: typeof data.journal === 'string' ? data.journal : '',
+    };
+  } catch (err) {
+    console.error(`Failed to parse data for month ${month}:`, err);
+    return getDefaultMonthData(month);
+  }
+}
+
+export function saveMonthData(data: MonthData): void {
+  if (!isLocalStorageAvailable()) return;
+  try {
+    const updatedData: MonthData = {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`${MONTH_STORAGE_PREFIX}${data.month}`, JSON.stringify(updatedData));
+    updateMonthIndex(data.month);
+
+    if (typeof window !== 'undefined') {
+      queueMicrotask(() => {
+        window.dispatchEvent(
+          new CustomEvent('daily_tracker_data_change', {
+            detail: { type: 'month', month: data.month, data: updatedData },
+          })
+        );
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to save data for month ${data.month}:`, err);
+  }
+}
+
+export function getPreviousActiveMonthData(currentMonth: string): MonthData | null {
+  const months = getAllSavedMonths();
+  const priorMonths = months.filter((m) => m < currentMonth).sort();
+  if (priorMonths.length === 0) return null;
+  const lastMonth = priorMonths[priorMonths.length - 1];
+  return getMonthData(lastMonth);
+}
+
 export function getAllDaySummaries(): DaySummary[] {
   const dates = getAllSavedDates();
   return dates.map((d) => {
@@ -137,7 +326,8 @@ export function getAllDaySummaries(): DaySummary[] {
     const completedTodos = data.todos.filter((t) => t.completed).length;
     const completedHabits = data.habits.filter((h) => h.completed).length;
     const hasNotes = Boolean(
-      data.reflections.morningIntentions.trim() ||
+      (data.journal && data.journal.trim()) ||
+        data.reflections.morningIntentions.trim() ||
         data.reflections.eveningReflection.trim() ||
         data.reflections.notes.trim()
     );
@@ -159,17 +349,31 @@ export function getAllDaySummaries(): DaySummary[] {
 export function exportAllDataAsJSON(): string {
   if (!isLocalStorageAvailable()) return '{}';
   const dates = getAllSavedDates();
-  const exportPayload: Record<string, DayData> = {};
+  const weeks = getAllSavedWeeks();
+  const months = getAllSavedMonths();
 
+  const exportPayload: Record<string, DayData> = {};
   for (const d of dates) {
     exportPayload[d] = getDayData(d);
   }
 
+  const exportWeeks: Record<string, WeekData> = {};
+  for (const w of weeks) {
+    exportWeeks[w] = getWeekData(w);
+  }
+
+  const exportMonths: Record<string, MonthData> = {};
+  for (const m of months) {
+    exportMonths[m] = getMonthData(m);
+  }
+
   return JSON.stringify(
     {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       days: exportPayload,
+      weeks: exportWeeks,
+      months: exportMonths,
     },
     null,
     2
@@ -183,19 +387,54 @@ export function importDataFromJSON(jsonStr: string): { success: boolean; count: 
 
   try {
     const parsed = JSON.parse(jsonStr);
-    const days = parsed.days || parsed; // Support both { days: { ... } } and raw dict
     let count = 0;
 
-    for (const [key, value] of Object.entries(days)) {
-      if (isValidDateString(key) && typeof value === 'object' && value !== null) {
-        const validatedDay: DayData = {
-          ...getDefaultDayData(key),
-          ...(value as Partial<DayData>),
-          date: key,
-        };
-        localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(validatedDay));
-        updateIndex(key);
-        count++;
+    // Days import
+    const days = parsed.days || (!parsed.weeks && !parsed.months ? parsed : {});
+    if (days && typeof days === 'object') {
+      for (const [key, value] of Object.entries(days)) {
+        if (isValidDateString(key) && typeof value === 'object' && value !== null) {
+          const validatedDay: DayData = {
+            ...getDefaultDayData(key),
+            ...(value as Partial<DayData>),
+            date: key,
+          };
+          localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(validatedDay));
+          updateIndex(key);
+          count++;
+        }
+      }
+    }
+
+    // Weeks import
+    if (parsed.weeks && typeof parsed.weeks === 'object') {
+      for (const [key, value] of Object.entries(parsed.weeks)) {
+        if (isValidWeekString(key) && typeof value === 'object' && value !== null) {
+          const validatedWeek: WeekData = {
+            ...getDefaultWeekData(key),
+            ...(value as Partial<WeekData>),
+            week: key,
+          };
+          localStorage.setItem(`${WEEK_STORAGE_PREFIX}${key}`, JSON.stringify(validatedWeek));
+          updateWeekIndex(key);
+          count++;
+        }
+      }
+    }
+
+    // Months import
+    if (parsed.months && typeof parsed.months === 'object') {
+      for (const [key, value] of Object.entries(parsed.months)) {
+        if (isValidMonthString(key) && typeof value === 'object' && value !== null) {
+          const validatedMonth: MonthData = {
+            ...getDefaultMonthData(key),
+            ...(value as Partial<MonthData>),
+            month: key,
+          };
+          localStorage.setItem(`${MONTH_STORAGE_PREFIX}${key}`, JSON.stringify(validatedMonth));
+          updateMonthIndex(key);
+          count++;
+        }
       }
     }
 

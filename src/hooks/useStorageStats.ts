@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, startTransition } from 'react';
 import { getAllDaySummaries, getAllSavedDates, getDayData } from '@/lib/storage';
 import { getTodayDateString, getPreviousDate, parseDate } from '@/lib/dateUtils';
-import { DaySummary, DayData } from '@/types';
+import { DaySummary } from '@/types';
 
 export interface TrackerStats {
   totalDays: number;
@@ -141,6 +141,9 @@ export function useStorageStats() {
       }
       if (data.reflections.notes.toLowerCase().includes(q)) {
         matches.push(`Notes: ${data.reflections.notes.slice(0, 80)}...`);
+      }
+      if (data.journal && data.journal.toLowerCase().includes(q)) {
+        matches.push(`Journal: ${data.journal.slice(0, 80)}...`);
       }
 
       if (matches.length > 0) {

@@ -15,31 +15,31 @@ export function generateDayMarkdown(day: DayData): string {
   lines.push(`# Daily Log: ${formatFullDate(day.date)}`);
   lines.push(``);
 
-  // One Big Thing
-  if (day.oneBigThing.trim()) {
-    lines.push(`## 🎯 One Big Thing`);
-    lines.push(`${day.oneBigThingDone ? '- [x]' : '- [ ]'} **${day.oneBigThing.trim()}**`);
-    lines.push(``);
-  }
-
   // To-Dos
-  lines.push(`## 📋 Daily Tasks`);
+  lines.push(`## Daily Tasks`);
   if (day.todos.length === 0) {
     lines.push(`*No tasks recorded for this day.*`);
   } else {
     for (const todo of day.todos) {
       const check = todo.completed ? '[x]' : '[ ]';
-      const prioEmoji = todo.priority === 'high' ? '🔥 ' : todo.priority === 'low' ? '☕ ' : '';
+      const statusStr = todo.status === 'in_progress' ? '[In Progress] ' : '';
+      const prioStr = todo.priority === 'high' ? '[High] ' : '';
       const tagStr = todo.tag ? ` #${todo.tag}` : '';
       const estStr = todo.estimate ? ` (${todo.estimate})` : '';
-      lines.push(`- ${check} ${prioEmoji}${todo.text}${tagStr}${estStr}`);
+      lines.push(`- ${check} ${statusStr}${prioStr}${todo.text}${tagStr}${estStr}`);
+      if (todo.subtasks && todo.subtasks.length > 0) {
+        for (const sub of todo.subtasks) {
+          const subCheck = sub.completed ? '[x]' : '[ ]';
+          lines.push(`  - ${subCheck} ${sub.text}`);
+        }
+      }
     }
   }
   lines.push(``);
 
   // Habits
   if (day.habits.length > 0) {
-    lines.push(`## ✨ Habits & Rituals`);
+    lines.push(`## Habits & Rituals`);
     for (const habit of day.habits) {
       lines.push(`- ${habit.completed ? '[x]' : '[ ]'} ${habit.title}`);
     }
@@ -48,20 +48,26 @@ export function generateDayMarkdown(day: DayData): string {
 
   // Reflections
   if (day.reflections.morningIntentions.trim()) {
-    lines.push(`## 🌅 Morning Intentions & Focus`);
+    lines.push(`## Morning Intentions`);
     lines.push(day.reflections.morningIntentions.trim());
     lines.push(``);
   }
 
   if (day.reflections.eveningReflection.trim()) {
-    lines.push(`## 🌙 Evening Reflection & Wins`);
+    lines.push(`## Evening Review`);
     lines.push(day.reflections.eveningReflection.trim());
     lines.push(``);
   }
 
   if (day.reflections.notes.trim()) {
-    lines.push(`## 📝 Notes & Brain Dump`);
+    lines.push(`## Notes & Scratchpad`);
     lines.push(day.reflections.notes.trim());
+    lines.push(``);
+  }
+
+  if (day.journal && day.journal.trim()) {
+    lines.push(`## Journal`);
+    lines.push(day.journal.trim());
     lines.push(``);
   }
 
