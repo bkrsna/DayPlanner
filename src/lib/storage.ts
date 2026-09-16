@@ -26,6 +26,7 @@ export function getDefaultDayData(date: string): DayData {
     oneBigThingDone: false,
     todos: [],
     journal: '',
+    notes: [],
     habits: DEFAULT_HABITS.map((h, i) => ({
       id: `habit-${i + 1}`,
       title: h.title,
@@ -91,6 +92,7 @@ export function getDayData(date: string): DayData {
       ...data,
       todos: Array.isArray(data.todos) ? data.todos : [],
       journal: typeof data.journal === 'string' ? data.journal : data.reflections?.notes || '',
+      notes: Array.isArray(data.notes) ? data.notes : [],
       habits: Array.isArray(data.habits) && data.habits.length > 0 ? data.habits : defaults.habits,
       vitals: { ...defaults.vitals, ...(data.vitals || {}) },
       reflections: { ...defaults.reflections, ...(data.reflections || {}) },
@@ -147,6 +149,7 @@ export function getDefaultWeekData(week: string): WeekData {
     updatedAt: now,
     todos: [],
     journal: '',
+    notes: [],
   };
 }
 
@@ -188,6 +191,7 @@ export function getWeekData(week: string): WeekData {
       ...data,
       todos: Array.isArray(data.todos) ? data.todos : [],
       journal: typeof data.journal === 'string' ? data.journal : '',
+      notes: Array.isArray(data.notes) ? data.notes : [],
     };
   } catch (err) {
     console.error(`Failed to parse data for week ${week}:`, err);
@@ -239,6 +243,7 @@ export function getDefaultMonthData(month: string): MonthData {
     updatedAt: now,
     todos: [],
     journal: '',
+    notes: [],
   };
 }
 
@@ -280,6 +285,7 @@ export function getMonthData(month: string): MonthData {
       ...data,
       todos: Array.isArray(data.todos) ? data.todos : [],
       journal: typeof data.journal === 'string' ? data.journal : '',
+      notes: Array.isArray(data.notes) ? data.notes : [],
     };
   } catch (err) {
     console.error(`Failed to parse data for month ${month}:`, err);
@@ -329,7 +335,8 @@ export function getAllDaySummaries(): DaySummary[] {
       (data.journal && data.journal.trim()) ||
         data.reflections.morningIntentions.trim() ||
         data.reflections.eveningReflection.trim() ||
-        data.reflections.notes.trim()
+        data.reflections.notes.trim() ||
+        (Array.isArray(data.notes) && data.notes.length > 0)
     );
 
     return {
@@ -397,6 +404,7 @@ export function importDataFromJSON(jsonStr: string): { success: boolean; count: 
           const validatedDay: DayData = {
             ...getDefaultDayData(key),
             ...(value as Partial<DayData>),
+            notes: Array.isArray((value as DayData).notes) ? (value as DayData).notes : [],
             date: key,
           };
           localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(validatedDay));
@@ -413,6 +421,7 @@ export function importDataFromJSON(jsonStr: string): { success: boolean; count: 
           const validatedWeek: WeekData = {
             ...getDefaultWeekData(key),
             ...(value as Partial<WeekData>),
+            notes: Array.isArray((value as WeekData).notes) ? (value as WeekData).notes : [],
             week: key,
           };
           localStorage.setItem(`${WEEK_STORAGE_PREFIX}${key}`, JSON.stringify(validatedWeek));
@@ -429,6 +438,7 @@ export function importDataFromJSON(jsonStr: string): { success: boolean; count: 
           const validatedMonth: MonthData = {
             ...getDefaultMonthData(key),
             ...(value as Partial<MonthData>),
+            notes: Array.isArray((value as MonthData).notes) ? (value as MonthData).notes : [],
             month: key,
           };
           localStorage.setItem(`${MONTH_STORAGE_PREFIX}${key}`, JSON.stringify(validatedMonth));

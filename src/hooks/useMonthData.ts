@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MonthData, Priority, TodoItem, SubTask } from '@/types';
+import { MonthData, Priority, TodoItem, SubTask, NoteIdeaItem } from '@/types';
 import {
   getMonthData,
   saveMonthData,
@@ -283,6 +283,59 @@ export function useMonthData(month: string) {
     [debouncedSave]
   );
 
+  // Notes & Ideas (saved into main month JSON)
+  const addNoteIdea = useCallback(
+    (item: Omit<NoteIdeaItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const now = new Date().toISOString();
+      const newItem: NoteIdeaItem = {
+        ...item,
+        id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+      mutateImmediate((prev) => ({
+        ...prev,
+        notes: [newItem, ...(prev.notes || [])],
+      }));
+      return newItem;
+    },
+    [mutateImmediate]
+  );
+
+  const updateNoteIdea = useCallback(
+    (id: string, updates: Partial<NoteIdeaItem>) => {
+      debouncedSave((prev) => ({
+        ...prev,
+        notes: (prev.notes || []).map((n) =>
+          n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
+        ),
+      }));
+    },
+    [debouncedSave]
+  );
+
+  const deleteNoteIdea = useCallback(
+    (id: string) => {
+      mutateImmediate((prev) => ({
+        ...prev,
+        notes: (prev.notes || []).filter((n) => n.id !== id),
+      }));
+    },
+    [mutateImmediate]
+  );
+
+  const togglePinNoteIdea = useCallback(
+    (id: string) => {
+      mutateImmediate((prev) => ({
+        ...prev,
+        notes: (prev.notes || []).map((n) =>
+          n.id === id ? { ...n, pinned: !n.pinned, updatedAt: new Date().toISOString() } : n
+        ),
+      }));
+    },
+    [mutateImmediate]
+  );
+
   const rolloverUnfinishedTasks = useCallback(() => {
     const prevMonth = getPreviousActiveMonthData(month);
     if (!prevMonth) return 0;
@@ -334,6 +387,10 @@ export function useMonthData(month: string) {
     clearCompletedTodos,
     clearCompletedSpecialTodos,
     updateJournal,
+    addNoteIdea,
+    updateNoteIdea,
+    deleteNoteIdea,
+    togglePinNoteIdea,
     rolloverUnfinishedTasks,
     hasPreviousUnfinishedTasks,
   };

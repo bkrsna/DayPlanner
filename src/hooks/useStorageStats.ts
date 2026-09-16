@@ -146,6 +146,19 @@ export function useStorageStats() {
         matches.push(`Journal: ${data.journal.slice(0, 80)}...`);
       }
 
+      if (Array.isArray(data.notes)) {
+        for (const n of data.notes) {
+          const matchTitle = n.title.toLowerCase().includes(q);
+          const matchContent = n.content.toLowerCase().includes(q);
+          const matchTag = n.tags?.some((t) => t.toLowerCase().includes(q));
+          if (matchTitle || matchContent || matchTag) {
+            const label = n.type === 'idea' ? 'Idea' : 'Note';
+            const snippet = n.content.trim() ? ` - ${n.content.slice(0, 50)}...` : '';
+            matches.push(`${label}: ${n.title.trim() || 'Untitled'}${snippet}`);
+          }
+        }
+      }
+
       if (matches.length > 0) {
         results.push({ date: d, matches });
       }

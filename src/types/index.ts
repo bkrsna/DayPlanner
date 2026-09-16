@@ -34,6 +34,17 @@ export interface DayVitals {
   energy?: number; // 1 to 5
 }
 
+export interface NoteIdeaItem {
+  id: string;
+  title: string;
+  content: string;
+  type: 'note' | 'idea';
+  tags?: string[];
+  pinned?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DayReflections {
   morningIntentions: string;
   eveningReflection: string;
@@ -53,6 +64,7 @@ export interface DayData {
   vitals: DayVitals;
   reflections: DayReflections;
   journal?: string;
+  notes?: NoteIdeaItem[];
 }
 
 export interface WeekData {
@@ -61,6 +73,7 @@ export interface WeekData {
   updatedAt: string;
   todos: TodoItem[];
   journal?: string;
+  notes?: NoteIdeaItem[];
 }
 
 export interface MonthData {
@@ -69,6 +82,7 @@ export interface MonthData {
   updatedAt: string;
   todos: TodoItem[];
   journal?: string;
+  notes?: NoteIdeaItem[];
 }
 
 export interface DaySummary {

@@ -23,6 +23,8 @@ import {
   Download,
   ArrowRight,
   Sparkles,
+  Timer,
+  Lightbulb,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -30,6 +32,8 @@ interface CommandPaletteProps {
   onClose: () => void;
   onOpenConsistency: () => void;
   onOpenExport: () => void;
+  onOpenClock?: () => void;
+  onOpenNotes?: () => void;
 }
 
 export function CommandPalette({
@@ -37,6 +41,8 @@ export function CommandPalette({
   onClose,
   onOpenConsistency,
   onOpenExport,
+  onOpenClock,
+  onOpenNotes,
 }: CommandPaletteProps) {
   const router = useRouter();
   const { toggleTheme, isDark } = useTheme();
@@ -152,6 +158,34 @@ export function CommandPalette({
         onClose();
       },
     },
+    ...(onOpenClock
+      ? [
+          {
+            id: 'mac-clock',
+            title: 'Open Clock & Stopwatch App',
+            subtitle: 'macOS Clock, World Hubs, Stopwatch & Focus Timer',
+            icon: Timer,
+            action: () => {
+              onClose();
+              onOpenClock();
+            },
+          },
+        ]
+      : []),
+    ...(onOpenNotes
+      ? [
+          {
+            id: 'mac-notes',
+            title: 'Open Notes & Ideas App',
+            subtitle: 'macOS Notes, Ideas, Checklists & Scratchpad in daily JSON',
+            icon: Lightbulb,
+            action: () => {
+              onClose();
+              onOpenNotes();
+            },
+          },
+        ]
+      : []),
   ];
 
   return (

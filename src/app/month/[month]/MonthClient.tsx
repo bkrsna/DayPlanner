@@ -11,6 +11,8 @@ import { Journal } from '@/components/Journal';
 import { ConsistencyModal } from '@/components/ConsistencyModal';
 import { ExportImportModal } from '@/components/ExportImportModal';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AppsLauncherCard } from '@/components/AppsLauncherCard';
+import { MacAppWindow, MacAppId } from '@/components/MacAppWindow/MacAppWindow';
 import { getTodayDateString } from '@/lib/dateUtils';
 
 interface MonthClientProps {
@@ -21,6 +23,8 @@ export function MonthClient({ month }: MonthClientProps) {
   const [isConsistencyOpen, setIsConsistencyOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isMacAppOpen, setIsMacAppOpen] = useState(false);
+  const [activeMacApp, setActiveMacApp] = useState<MacAppId>('clock');
 
   const {
     data,
@@ -40,6 +44,10 @@ export function MonthClient({ month }: MonthClientProps) {
     clearCompletedTodos,
     clearCompletedSpecialTodos,
     updateJournal,
+    addNoteIdea,
+    updateNoteIdea,
+    deleteNoteIdea,
+    togglePinNoteIdea,
     rolloverUnfinishedTasks,
     hasPreviousUnfinishedTasks,
   } = useMonthData(month);
@@ -112,9 +120,21 @@ export function MonthClient({ month }: MonthClientProps) {
             />
           </div>
 
-          {/* Right Column (3 cols): Other components - Clock & Journal */}
-          <div className="lg:col-span-3 w-full lg:sticky lg:top-6 space-y-5">
-            <Clock />
+          {/* Right Column (3 cols): Apps Launcher Card, Clock & Journal */}
+          <div className="lg:col-span-3 w-full lg:sticky lg:top-6 space-y-4">
+            <AppsLauncherCard
+              notesCount={data.notes?.length || 0}
+              onOpenApp={(app) => {
+                setActiveMacApp(app);
+                setIsMacAppOpen(true);
+              }}
+            />
+            <Clock
+              onExpand={() => {
+                setActiveMacApp('clock');
+                setIsMacAppOpen(true);
+              }}
+            />
             <Journal
               value={data.journal || ''}
               onChange={updateJournal}
@@ -122,10 +142,30 @@ export function MonthClient({ month }: MonthClientProps) {
               lastSaved={lastSaved}
               title="Monthly Journal"
               placeholder="Write monthly reflection, review, notes..."
+              onExpand={() => {
+                setActiveMacApp('notes');
+                setIsMacAppOpen(true);
+              }}
             />
           </div>
         </div>
       </main>
+
+      {/* MacBook Application Window / Popup */}
+      <MacAppWindow
+        isOpen={isMacAppOpen}
+        onClose={() => setIsMacAppOpen(false)}
+        activeApp={activeMacApp}
+        onSelectApp={setActiveMacApp}
+        notes={data.notes || []}
+        onAddNoteIdea={addNoteIdea}
+        onUpdateNoteIdea={updateNoteIdea}
+        onDeleteNoteIdea={deleteNoteIdea}
+        onTogglePinNoteIdea={togglePinNoteIdea}
+        currentDate={month}
+        journalText={data.journal}
+        onAddTodo={(text) => addTodo(text, 'medium')}
+      />
 
       {/* Global Modals */}
       <ConsistencyModal
@@ -145,6 +185,14 @@ export function MonthClient({ month }: MonthClientProps) {
         onClose={() => setIsCommandOpen(false)}
         onOpenConsistency={() => setIsConsistencyOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenClock={() => {
+          setActiveMacApp('clock');
+          setIsMacAppOpen(true);
+        }}
+        onOpenNotes={() => {
+          setActiveMacApp('notes');
+          setIsMacAppOpen(true);
+        }}
       />
     </div>
   );

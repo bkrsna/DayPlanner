@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCheck } from 'lucide-react';
+import { CheckCheck, Maximize2 } from 'lucide-react';
 
 interface JournalProps {
   value: string;
@@ -9,6 +9,7 @@ interface JournalProps {
   lastSaved?: Date | null;
   title?: string;
   placeholder?: string;
+  onExpand?: () => void;
 }
 
 export function Journal({
@@ -18,14 +19,26 @@ export function Journal({
   lastSaved = null,
   title = 'Journal',
   placeholder = 'Write thoughts, notes, reflections...',
+  onExpand,
 }: JournalProps) {
   return (
     <div className="rounded-3xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-900/80 p-4 sm:p-5 shadow-sm space-y-3">
       {/* Minimalist Header */}
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base sm:text-lg font-normal tracking-tight text-zinc-900 dark:text-zinc-50">
-          {title}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-normal tracking-tight text-zinc-900 dark:text-zinc-50">
+            {title}
+          </h2>
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              title="Open full MacBook Notes & Ideas app"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
 
         {/* Auto-save Status */}
         <div className="flex items-center gap-1.5 text-xs">

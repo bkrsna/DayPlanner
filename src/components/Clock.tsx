@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Timer, Play, Pause, RotateCcw, Plus, X, Globe } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, Plus, X, Globe, Maximize2 } from 'lucide-react';
 
 interface CityConfig {
   id: string; // unique key or IANA timezone
   name: string;
   tz: string; // IANA timezone or 'local'
+}
+
+interface ClockProps {
+  onExpand?: () => void;
 }
 
 const AVAILABLE_CITIES: CityConfig[] = [
@@ -36,7 +40,7 @@ const DEFAULT_SELECTED_CITIES: CityConfig[] = [
 
 const STORAGE_KEY = 'daytrack_selected_cities_v2';
 
-export function Clock() {
+export function Clock({ onExpand }: ClockProps = {}) {
   const [now, setNow] = useState<Date | null>(null);
   const [cities, setCities] = useState<CityConfig[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -172,6 +176,15 @@ export function Clock() {
             <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
               Stopwatch
             </span>
+            {onExpand && (
+              <button
+                onClick={onExpand}
+                className="p-0.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                title="Open full MacBook Clock & Stopwatch app"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
           {/* Controls */}

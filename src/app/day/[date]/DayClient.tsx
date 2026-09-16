@@ -11,6 +11,8 @@ import { Journal } from '@/components/Journal';
 import { ConsistencyModal } from '@/components/ConsistencyModal';
 import { ExportImportModal } from '@/components/ExportImportModal';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AppsLauncherCard } from '@/components/AppsLauncherCard';
+import { MacAppWindow, MacAppId } from '@/components/MacAppWindow/MacAppWindow';
 
 interface DayClientProps {
   date: string;
@@ -20,6 +22,8 @@ export function DayClient({ date }: DayClientProps) {
   const [isConsistencyOpen, setIsConsistencyOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isMacAppOpen, setIsMacAppOpen] = useState(false);
+  const [activeMacApp, setActiveMacApp] = useState<MacAppId>('clock');
 
   const {
     data,
@@ -39,6 +43,10 @@ export function DayClient({ date }: DayClientProps) {
     clearCompletedTodos,
     clearCompletedSpecialTodos,
     updateJournal,
+    addNoteIdea,
+    updateNoteIdea,
+    deleteNoteIdea,
+    togglePinNoteIdea,
     rolloverUnfinishedTasks,
     hasPreviousUnfinishedTasks,
   } = useDayData(date);
@@ -111,9 +119,21 @@ export function DayClient({ date }: DayClientProps) {
             />
           </div>
 
-          {/* Right Column (3 cols): Other components - Clock & Journal */}
-          <div className="lg:col-span-3 w-full lg:sticky lg:top-6 space-y-5">
-            <Clock />
+          {/* Right Column (3 cols): Apps Launcher Card, Clock & Journal */}
+          <div className="lg:col-span-3 w-full lg:sticky lg:top-6 space-y-4">
+            <AppsLauncherCard
+              notesCount={data.notes?.length || 0}
+              onOpenApp={(app) => {
+                setActiveMacApp(app);
+                setIsMacAppOpen(true);
+              }}
+            />
+            <Clock
+              onExpand={() => {
+                setActiveMacApp('clock');
+                setIsMacAppOpen(true);
+              }}
+            />
             <Journal
               value={data.journal || ''}
               onChange={updateJournal}
@@ -121,10 +141,30 @@ export function DayClient({ date }: DayClientProps) {
               lastSaved={lastSaved}
               title="Journal"
               placeholder="Write thoughts, notes, reflections..."
+              onExpand={() => {
+                setActiveMacApp('notes');
+                setIsMacAppOpen(true);
+              }}
             />
           </div>
         </div>
       </main>
+
+      {/* MacBook Application Window / Popup */}
+      <MacAppWindow
+        isOpen={isMacAppOpen}
+        onClose={() => setIsMacAppOpen(false)}
+        activeApp={activeMacApp}
+        onSelectApp={setActiveMacApp}
+        notes={data.notes || []}
+        onAddNoteIdea={addNoteIdea}
+        onUpdateNoteIdea={updateNoteIdea}
+        onDeleteNoteIdea={deleteNoteIdea}
+        onTogglePinNoteIdea={togglePinNoteIdea}
+        currentDate={date}
+        journalText={data.journal}
+        onAddTodo={(text) => addTodo(text, 'medium')}
+      />
 
       {/* Global Modals */}
       <ConsistencyModal
@@ -144,6 +184,14 @@ export function DayClient({ date }: DayClientProps) {
         onClose={() => setIsCommandOpen(false)}
         onOpenConsistency={() => setIsConsistencyOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenClock={() => {
+          setActiveMacApp('clock');
+          setIsMacAppOpen(true);
+        }}
+        onOpenNotes={() => {
+          setActiveMacApp('notes');
+          setIsMacAppOpen(true);
+        }}
       />
     </div>
   );
