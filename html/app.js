@@ -4767,97 +4767,91 @@
     if (state.isExportOpen) {
       html += `
         <div id="export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div class="relative w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl">
-            <div class="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
-              <div>
-                <h2 class="text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-                  ${ICONS.download('w-5 h-5 text-indigo-500')}
-                  <span>Data Portability & Backup</span>
+          <div class="relative w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-2xl">
+            <div class="flex items-center justify-between pb-3.5 border-b border-zinc-100 dark:border-zinc-800/80">
+              <div class="flex items-center gap-2">
+                ${ICONS.download('w-4 h-4 text-zinc-500 dark:text-zinc-400')}
+                <h2 class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  Backup & Export
                 </h2>
-                <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                  100% private. All your data lives locally in your browser.
-                </p>
               </div>
-              <button id="close-export-btn" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                ${ICONS.x('w-4 h-4')}
-              </button>
+              <div class="flex items-center gap-2">
+                <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-400 font-mono border border-zinc-200 dark:border-zinc-700/60">
+                  ESC
+                </kbd>
+                <button id="close-export-btn" class="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  ${ICONS.x('w-4 h-4')}
+                </button>
+              </div>
             </div>
 
             ${
               state.importStatus.type !== 'idle'
                 ? `
               <div
-                class="my-4 p-3 rounded-xl text-xs flex items-center gap-2 ${
+                class="mt-3.5 p-2.5 rounded-lg text-xs flex items-center justify-between gap-2 animate-in fade-in duration-150 ${
                   state.importStatus.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                    : 'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800'
+                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60'
+                    : 'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-200/80 dark:border-red-800/60'
                 }"
               >
-                ${
-                  state.importStatus.type === 'success'
-                    ? ICONS.check('w-4 h-4 text-emerald-500 shrink-0')
-                    : ICONS.alertCircle('w-4 h-4 text-red-500 shrink-0')
-                }
-                <span>${escapeHtml(state.importStatus.message)}</span>
+                <div class="flex items-center gap-2 min-w-0">
+                  ${
+                    state.importStatus.type === 'success'
+                      ? ICONS.check('w-3.5 h-3.5 text-emerald-500 shrink-0')
+                      : ICONS.alertCircle('w-3.5 h-3.5 text-red-500 shrink-0')
+                  }
+                  <span class="truncate">${escapeHtml(state.importStatus.message)}</span>
+                </div>
               </div>
             `
                 : ''
             }
 
-            <div class="my-5 space-y-3">
-              <!-- Export Current Day as Markdown -->
-              <div class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3">
-                <div>
-                  <div class="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    ${ICONS.fileText('w-3.5 h-3.5 text-blue-500')}
-                    <span>Export Current Day as Markdown</span>
-                  </div>
-                  <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Download ${state.currentId}.md ready for Obsidian, Logseq, or Notion.
-                  </p>
+            <div class="mt-3.5 divide-y divide-zinc-100 dark:divide-zinc-800/80 rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/40 overflow-hidden">
+              <!-- Export Current Day -->
+              <div class="p-3 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${ICONS.fileText('w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0')}
+                  <span class="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                    Current Day (${state.currentId}.md)
+                  </span>
                 </div>
                 <button
                   id="export-md-btn"
-                  class="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity shrink-0"
+                  class="px-2.5 py-1 text-xs font-medium rounded-md bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 transition-colors shrink-0 shadow-2xs cursor-pointer"
                 >
-                  Export .md
+                  Export
                 </button>
               </div>
 
               <!-- Export Full Backup JSON -->
-              <div class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3">
-                <div>
-                  <div class="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    ${ICONS.fileCode('w-3.5 h-3.5 text-indigo-500')}
-                    <span>Full System Backup (JSON)</span>
-                  </div>
-                  <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Export all historical days, tasks, habits, and reflections in a single file.
-                  </p>
+              <div class="p-3 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${ICONS.fileCode('w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0')}
+                  <span class="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                    Full System Backup (.json)
+                  </span>
                 </div>
                 <button
                   id="export-json-btn"
-                  class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shrink-0 shadow-xs"
+                  class="px-2.5 py-1 text-xs font-medium rounded-md bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 transition-colors shrink-0 shadow-2xs cursor-pointer"
                 >
-                  Download JSON
+                  Export
                 </button>
               </div>
 
               <!-- Restore from Backup -->
-              <div class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-2.5">
+              <div class="p-3">
                 <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <div class="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                      ${ICONS.upload('w-3.5 h-3.5 text-emerald-500')}
-                      <span>Restore from Backup</span>
-                    </div>
-                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      Import a previously saved JSON file to restore your progress.
-                    </p>
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    ${ICONS.upload('w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0')}
+                    <span class="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                      Restore from Backup
+                    </span>
                   </div>
-
-                  <div class="flex items-center gap-1.5">
-                    <label class="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border border-zinc-200 dark:border-zinc-700">
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <label class="cursor-pointer px-2.5 py-1 text-xs font-medium rounded-md bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 transition-colors shadow-2xs">
                       <span>Select File</span>
                       <input
                         type="file"
@@ -4868,9 +4862,13 @@
                     </label>
                     <button
                       id="toggle-paste-btn"
-                      class="px-2.5 py-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      class="px-2.5 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer ${
+                        state.showPaste
+                          ? 'bg-zinc-200 dark:bg-zinc-700 border-zinc-300 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 hover:text-zinc-700 dark:hover:text-zinc-200'
+                      }"
                     >
-                      ${state.showPaste ? 'Hide' : 'Paste'}
+                      Paste
                     </button>
                   </div>
                 </div>
@@ -4878,34 +4876,34 @@
                 ${
                   state.showPaste
                     ? `
-                  <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
+                  <div class="mt-3 pt-3 border-t border-zinc-200/80 dark:border-zinc-800 space-y-2 animate-in fade-in duration-100">
                     <textarea
                       id="paste-json-textarea"
-                      placeholder="Paste backup JSON content here..."
+                      placeholder="Paste JSON backup content here..."
                       rows="4"
-                      class="w-full text-xs font-mono p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 outline-none"
+                      class="w-full text-xs font-mono p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
                     >${escapeHtml(state.pasteText)}</textarea>
-                    <button
-                      id="confirm-paste-btn"
-                      ${!state.pasteText.trim() ? 'disabled' : ''}
-                      class="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-50"
-                    >
-                      Confirm Restore
-                    </button>
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        id="cancel-paste-btn"
+                        type="button"
+                        class="px-2.5 py-1 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        id="confirm-paste-btn"
+                        ${!state.pasteText.trim() ? 'disabled' : ''}
+                        class="px-3 py-1 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        Confirm Restore
+                      </button>
+                    </div>
                   </div>
                 `
                     : ''
                 }
               </div>
-            </div>
-
-            <div class="text-right">
-              <button
-                id="close-export-btn-2"
-                class="px-4 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>
@@ -5456,6 +5454,12 @@
         } else {
           state.importStatus = { type: 'error', message: res.error || 'Invalid JSON provided.' };
         }
+        renderModals();
+        return;
+      }
+      if (target.closest('#cancel-paste-btn')) {
+        state.showPaste = false;
+        state.pasteText = '';
         renderModals();
         return;
       }
