@@ -262,7 +262,7 @@ export function useMonthData(month: string) {
   const clearCompletedTodos = useCallback(() => {
     mutateImmediate((prev) => ({
       ...prev,
-      todos: prev.todos.filter((t) => !(t.completed && !t.isSpecial)),
+      todos: prev.todos.filter((t) => !t.completed),
     }));
   }, [mutateImmediate]);
 

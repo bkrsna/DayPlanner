@@ -23,7 +23,6 @@ import {
   ListPlus,
   ListChecks,
   CornerDownRight,
-  Star,
   GripVertical,
 } from 'lucide-react';
 
@@ -73,7 +72,6 @@ export function TodoSection({
   const [priority, setPriority] = useState<Priority>('medium');
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [selectedEstimate, setSelectedEstimate] = useState<string>('');
-  const [isSpecial, setIsSpecial] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'in_progress' | 'completed' | 'high'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -99,8 +97,8 @@ export function TodoSection({
   const estimateMenuRef = useRef<HTMLDivElement>(null);
   const prevCompletedCountRef = useRef<number>(0);
 
-  // Filter out special tasks from main to-dos
-  const regularTodos = useMemo(() => todos.filter((t) => !t.isSpecial), [todos]);
+  // Regular todos (all todos)
+  const regularTodos = todos;
 
   const totalCount = regularTodos.length;
   const completedCount = useMemo(() => regularTodos.filter((t) => t.completed).length, [regularTodos]);
@@ -160,15 +158,13 @@ export function TodoSection({
       newText.trim(),
       priority,
       selectedTag || undefined,
-      selectedEstimate || undefined,
-      isSpecial
+      selectedEstimate || undefined
     );
 
     setNewText('');
     setSelectedTag('');
     setSelectedEstimate('');
     setPriority('medium');
-    setIsSpecial(false);
     setShowTagMenu(false);
     setShowEstimateMenu(false);
   };
@@ -551,20 +547,6 @@ export function TodoSection({
                 </div>
               )}
             </div>
-
-            {/* Special task toggle icon */}
-            <button
-              type="button"
-              onClick={() => setIsSpecial(!isSpecial)}
-              title={isSpecial ? 'Special task enabled (adds to left bottom)' : 'Mark as special task (left bottom)'}
-              className={`p-2 rounded-xl text-sm transition-colors ${
-                isSpecial
-                  ? 'text-amber-500 fill-amber-500 bg-amber-50 dark:bg-amber-950/50'
-                  : 'text-zinc-400 hover:text-amber-500'
-              }`}
-            >
-              <Star className={`w-4 h-4 ${isSpecial ? 'fill-amber-500 text-amber-500' : ''}`} />
-            </button>
 
             {/* Submit icon button */}
             <button

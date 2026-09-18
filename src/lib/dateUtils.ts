@@ -56,6 +56,16 @@ export function formatFullDate(dateStr: string): string {
   });
 }
 
+export function formatConciseDate(dateStr: string): string {
+  const date = parseDate(dateStr);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function formatMediumDate(dateStr: string): string {
   const date = parseDate(dateStr);
   return date.toLocaleDateString('en-US', {

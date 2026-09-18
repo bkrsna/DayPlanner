@@ -287,7 +287,7 @@ export function useDayData(date: string) {
   const clearCompletedTodos = useCallback(() => {
     mutateImmediate((prev) => ({
       ...prev,
-      todos: prev.todos.filter((t) => !(t.completed && !t.isSpecial)),
+      todos: prev.todos.filter((t) => !t.completed),
     }));
   }, [mutateImmediate]);
 

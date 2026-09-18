@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   formatFullDate,
+  formatConciseDate,
   formatMediumDate,
   getRelativeDateLabel,
   getPreviousDate,
@@ -98,6 +99,7 @@ export function PeriodNavigator({ periodType, currentId }: PeriodNavigatorProps)
 
   // Label calculation
   let fullTitle = '';
+  let conciseTitle = '';
   let shortTitle = '';
   let relativeLabel: string | null = null;
   let isCurrent = false;
@@ -105,6 +107,7 @@ export function PeriodNavigator({ periodType, currentId }: PeriodNavigatorProps)
 
   if (periodType === 'day') {
     fullTitle = formatFullDate(currentId);
+    conciseTitle = formatConciseDate(currentId);
     shortTitle = formatMediumDate(currentId);
     relativeLabel = getRelativeDateLabel(currentId);
     isCurrent = currentId === getTodayDateString();
@@ -113,12 +116,14 @@ export function PeriodNavigator({ periodType, currentId }: PeriodNavigatorProps)
     const range = getWeekDateRange(currentId);
     const weekNum = currentId.split('-W')[1];
     fullTitle = `Week ${parseInt(weekNum, 10)} • ${range.label}`;
+    conciseTitle = `W${parseInt(weekNum, 10)} • ${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${range.end.getDate()}`;
     shortTitle = `W${parseInt(weekNum, 10)} (${range.start.getDate()}-${range.end.getDate()} ${range.start.toLocaleDateString('en-US', { month: 'short' })})`;
     relativeLabel = getRelativeWeekLabel(currentId);
     isCurrent = currentId === getCurrentWeekString();
     jumpButtonLabel = 'This Week';
   } else {
     fullTitle = formatMonthYear(currentId);
+    conciseTitle = formatMonthYear(currentId);
     shortTitle = formatMonthYear(currentId);
     relativeLabel = getRelativeMonthLabel(currentId);
     isCurrent = currentId === getCurrentMonthString();
@@ -146,10 +151,16 @@ export function PeriodNavigator({ periodType, currentId }: PeriodNavigatorProps)
     <div className="relative flex items-center justify-between gap-2 w-full">
       {/* Title & Relative Badge */}
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="hidden sm:inline font-normal sm:font-medium text-sm sm:text-base tracking-tight text-zinc-900 dark:text-zinc-50 select-none truncate">
-          {fullTitle}
+        <span
+          className="hidden sm:inline font-medium text-xs sm:text-sm tracking-tight text-zinc-900 dark:text-zinc-50 select-none truncate"
+          title={fullTitle}
+        >
+          {conciseTitle}
         </span>
-        <span className="sm:hidden font-normal sm:font-medium text-xs sm:text-sm tracking-tight text-zinc-900 dark:text-zinc-50 select-none truncate">
+        <span
+          className="sm:hidden font-medium text-xs tracking-tight text-zinc-900 dark:text-zinc-50 select-none truncate"
+          title={fullTitle}
+        >
           {shortTitle}
         </span>
 
