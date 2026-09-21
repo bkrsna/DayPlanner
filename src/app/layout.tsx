@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { AutoBackupManager } from '@/components/AutoBackupManager';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -30,7 +31,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans selection:bg-indigo-500/20">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AutoBackupManager />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

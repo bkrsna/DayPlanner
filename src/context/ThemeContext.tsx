@@ -20,10 +20,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('daily_theme') as Theme | null;
-    if (saved && ['light', 'dark', 'system'].includes(saved)) {
-      setThemeState(saved);
-    }
+    const loadTheme = () => {
+      const saved = localStorage.getItem('daily_theme') as Theme | null;
+      if (saved && ['light', 'dark', 'system'].includes(saved)) {
+        setThemeState(saved);
+      }
+    };
+    loadTheme();
+
+    const handleCustomChange = (e: Event) => {
+      const custom = e as CustomEvent<{ theme: Theme }>;
+      if (custom.detail?.theme && ['light', 'dark', 'system'].includes(custom.detail.theme)) {
+        setThemeState(custom.detail.theme);
+      } else {
+        loadTheme();
+      }
+    };
+
+    window.addEventListener('daily_theme_change', handleCustomChange);
+    window.addEventListener('storage', loadTheme);
+
+    return () => {
+      window.removeEventListener('daily_theme_change', handleCustomChange);
+      window.removeEventListener('storage', loadTheme);
+    };
   }, []);
 
   useEffect(() => {

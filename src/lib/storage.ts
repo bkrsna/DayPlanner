@@ -53,9 +53,25 @@ export function getAllSavedDates(): string[] {
   if (!isLocalStorageAvailable()) return [];
   try {
     const raw = localStorage.getItem(INDEX_KEY);
-    if (!raw) return [];
-    const parsed: string[] = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.sort() : [];
+    const indexDates: string[] = raw ? JSON.parse(raw) : [];
+    const dateSet = new Set<string>(Array.isArray(indexDates) ? indexDates : []);
+
+    // Self-healing: discover any unindexed day records
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_PREFIX)) {
+        const dateStr = key.slice(STORAGE_PREFIX.length);
+        if (isValidDateString(dateStr)) {
+          dateSet.add(dateStr);
+        }
+      }
+    }
+
+    const sorted = Array.from(dateSet).sort();
+    if (sorted.length !== (Array.isArray(indexDates) ? indexDates.length : 0)) {
+      localStorage.setItem(INDEX_KEY, JSON.stringify(sorted));
+    }
+    return sorted;
   } catch (err) {
     console.error('Failed to read day index from localStorage:', err);
     return [];
@@ -157,9 +173,24 @@ export function getAllSavedWeeks(): string[] {
   if (!isLocalStorageAvailable()) return [];
   try {
     const raw = localStorage.getItem(WEEK_INDEX_KEY);
-    if (!raw) return [];
-    const parsed: string[] = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.sort() : [];
+    const indexWeeks: string[] = raw ? JSON.parse(raw) : [];
+    const weekSet = new Set<string>(Array.isArray(indexWeeks) ? indexWeeks : []);
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(WEEK_STORAGE_PREFIX)) {
+        const weekStr = key.slice(WEEK_STORAGE_PREFIX.length);
+        if (isValidWeekString(weekStr)) {
+          weekSet.add(weekStr);
+        }
+      }
+    }
+
+    const sorted = Array.from(weekSet).sort();
+    if (sorted.length !== (Array.isArray(indexWeeks) ? indexWeeks.length : 0)) {
+      localStorage.setItem(WEEK_INDEX_KEY, JSON.stringify(sorted));
+    }
+    return sorted;
   } catch (err) {
     console.error('Failed to read week index from localStorage:', err);
     return [];
@@ -251,9 +282,24 @@ export function getAllSavedMonths(): string[] {
   if (!isLocalStorageAvailable()) return [];
   try {
     const raw = localStorage.getItem(MONTH_INDEX_KEY);
-    if (!raw) return [];
-    const parsed: string[] = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.sort() : [];
+    const indexMonths: string[] = raw ? JSON.parse(raw) : [];
+    const monthSet = new Set<string>(Array.isArray(indexMonths) ? indexMonths : []);
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(MONTH_STORAGE_PREFIX)) {
+        const monthStr = key.slice(MONTH_STORAGE_PREFIX.length);
+        if (isValidMonthString(monthStr)) {
+          monthSet.add(monthStr);
+        }
+      }
+    }
+
+    const sorted = Array.from(monthSet).sort();
+    if (sorted.length !== (Array.isArray(indexMonths) ? indexMonths.length : 0)) {
+      localStorage.setItem(MONTH_INDEX_KEY, JSON.stringify(sorted));
+    }
+    return sorted;
   } catch (err) {
     console.error('Failed to read month index from localStorage:', err);
     return [];
@@ -353,6 +399,15 @@ export function getAllDaySummaries(): DaySummary[] {
   });
 }
 
+export interface ImportDataResult {
+  success: boolean;
+  count: number;
+  weeksCount?: number;
+  monthsCount?: number;
+  settingsRestored?: boolean;
+  error?: string;
+}
+
 export function exportAllDataAsJSON(): string {
   if (!isLocalStorageAvailable()) return '{}';
   const dates = getAllSavedDates();
@@ -374,82 +429,215 @@ export function exportAllDataAsJSON(): string {
     exportMonths[m] = getMonthData(m);
   }
 
+  let selectedCities: unknown = null;
+  try {
+    const rawCities = localStorage.getItem('daytrack_selected_cities_v2');
+    if (rawCities) selectedCities = JSON.parse(rawCities);
+  } catch {
+    selectedCities = localStorage.getItem('daytrack_selected_cities_v2');
+  }
+
+  let macClockCities: unknown = null;
+  try {
+    const rawMac = localStorage.getItem('mac_app_clock_cities_v1');
+    if (rawMac) macClockCities = JSON.parse(rawMac);
+  } catch {
+    macClockCities = localStorage.getItem('mac_app_clock_cities_v1');
+  }
+
+  const settings = {
+    theme: localStorage.getItem('daily_theme') || 'system',
+    todoViewMode: localStorage.getItem('dayplanner_todo_view_mode') || 'grid',
+    selectedCities,
+    macClockCities,
+  };
+
   return JSON.stringify(
     {
-      version: 2,
+      version: 3,
+      app: 'DayPlanner',
       exportedAt: new Date().toISOString(),
       days: exportPayload,
       weeks: exportWeeks,
       months: exportMonths,
+      settings,
     },
     null,
     2
   );
 }
 
-export function importDataFromJSON(jsonStr: string): { success: boolean; count: number; error?: string } {
+export function importDataFromJSON(jsonStr: string): ImportDataResult {
   if (!isLocalStorageAvailable()) {
     return { success: false, count: 0, error: 'localStorage is not available' };
   }
 
   try {
     const parsed = JSON.parse(jsonStr);
-    let count = 0;
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, count: 0, error: 'Invalid JSON payload' };
+    }
 
-    // Days import
-    const days = parsed.days || (!parsed.weeks && !parsed.months ? parsed : {});
+    let importedDaysCount = 0;
+    let importedWeeksCount = 0;
+    let importedMonthsCount = 0;
+
+    // 1. Days import (support v3, v2, v1 flat, or legacy 'days' property)
+    const days = parsed.days || (!parsed.weeks && !parsed.months && !parsed.version ? parsed : {});
     if (days && typeof days === 'object') {
       for (const [key, value] of Object.entries(days)) {
         if (isValidDateString(key) && typeof value === 'object' && value !== null) {
+          const valObj = value as Partial<DayData>;
+          const defaults = getDefaultDayData(key);
           const validatedDay: DayData = {
-            ...getDefaultDayData(key),
-            ...(value as Partial<DayData>),
-            notes: Array.isArray((value as DayData).notes) ? (value as DayData).notes : [],
+            ...defaults,
+            ...valObj,
             date: key,
+            todos: Array.isArray(valObj.todos)
+              ? valObj.todos.map((t) => ({
+                  ...t,
+                  category: t.category,
+                  priority: t.priority || 'medium',
+                  completed: Boolean(t.completed),
+                  subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+                }))
+              : [],
+            journal:
+              typeof valObj.journal === 'string'
+                ? valObj.journal
+                : valObj.reflections?.notes || '',
+            notes: Array.isArray(valObj.notes) ? valObj.notes : [],
+            habits:
+              Array.isArray(valObj.habits) && valObj.habits.length > 0
+                ? valObj.habits
+                : defaults.habits,
+            vitals: { ...defaults.vitals, ...(valObj.vitals || {}) },
+            reflections: { ...defaults.reflections, ...(valObj.reflections || {}) },
           };
           localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(validatedDay));
-          updateIndex(key);
-          count++;
+          importedDaysCount++;
         }
       }
     }
 
-    // Weeks import
+    // 2. Weeks import
     if (parsed.weeks && typeof parsed.weeks === 'object') {
       for (const [key, value] of Object.entries(parsed.weeks)) {
         if (isValidWeekString(key) && typeof value === 'object' && value !== null) {
+          const valObj = value as Partial<WeekData>;
+          const defaults = getDefaultWeekData(key);
           const validatedWeek: WeekData = {
-            ...getDefaultWeekData(key),
-            ...(value as Partial<WeekData>),
-            notes: Array.isArray((value as WeekData).notes) ? (value as WeekData).notes : [],
+            ...defaults,
+            ...valObj,
             week: key,
+            todos: Array.isArray(valObj.todos)
+              ? valObj.todos.map((t) => ({
+                  ...t,
+                  category: t.category,
+                  priority: t.priority || 'medium',
+                  completed: Boolean(t.completed),
+                  subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+                }))
+              : [],
+            journal: typeof valObj.journal === 'string' ? valObj.journal : '',
+            notes: Array.isArray(valObj.notes) ? valObj.notes : [],
           };
           localStorage.setItem(`${WEEK_STORAGE_PREFIX}${key}`, JSON.stringify(validatedWeek));
-          updateWeekIndex(key);
-          count++;
+          importedWeeksCount++;
         }
       }
     }
 
-    // Months import
+    // 3. Months import
     if (parsed.months && typeof parsed.months === 'object') {
       for (const [key, value] of Object.entries(parsed.months)) {
         if (isValidMonthString(key) && typeof value === 'object' && value !== null) {
+          const valObj = value as Partial<MonthData>;
+          const defaults = getDefaultMonthData(key);
           const validatedMonth: MonthData = {
-            ...getDefaultMonthData(key),
-            ...(value as Partial<MonthData>),
-            notes: Array.isArray((value as MonthData).notes) ? (value as MonthData).notes : [],
+            ...defaults,
+            ...valObj,
             month: key,
+            todos: Array.isArray(valObj.todos)
+              ? valObj.todos.map((t) => ({
+                  ...t,
+                  category: t.category,
+                  priority: t.priority || 'medium',
+                  completed: Boolean(t.completed),
+                  subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+                }))
+              : [],
+            journal: typeof valObj.journal === 'string' ? valObj.journal : '',
+            notes: Array.isArray(valObj.notes) ? valObj.notes : [],
           };
           localStorage.setItem(`${MONTH_STORAGE_PREFIX}${key}`, JSON.stringify(validatedMonth));
-          updateMonthIndex(key);
-          count++;
+          importedMonthsCount++;
         }
       }
     }
 
-    window.dispatchEvent(new CustomEvent('daily_tracker_data_change', { detail: { type: 'import' } }));
-    return { success: true, count };
+    // 4. Settings restore
+    let settingsRestored = false;
+    if (parsed.settings && typeof parsed.settings === 'object') {
+      const s = parsed.settings;
+      if (typeof s.theme === 'string' && ['light', 'dark', 'system'].includes(s.theme)) {
+        localStorage.setItem('daily_theme', s.theme);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('daily_theme_change', { detail: { theme: s.theme } })
+          );
+        }
+        settingsRestored = true;
+      }
+      if (typeof s.todoViewMode === 'string' && ['grid', 'list'].includes(s.todoViewMode)) {
+        localStorage.setItem('dayplanner_todo_view_mode', s.todoViewMode);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('dayplanner_viewmode_change', { detail: { mode: s.todoViewMode } })
+          );
+        }
+        settingsRestored = true;
+      }
+      if (s.selectedCities !== undefined && s.selectedCities !== null) {
+        localStorage.setItem(
+          'daytrack_selected_cities_v2',
+          typeof s.selectedCities === 'string'
+            ? s.selectedCities
+            : JSON.stringify(s.selectedCities)
+        );
+        settingsRestored = true;
+      }
+      if (s.macClockCities !== undefined && s.macClockCities !== null) {
+        localStorage.setItem(
+          'mac_app_clock_cities_v1',
+          typeof s.macClockCities === 'string'
+            ? s.macClockCities
+            : JSON.stringify(s.macClockCities)
+        );
+        settingsRestored = true;
+      }
+    }
+
+    // 5. Rebuild indices atomically
+    getAllSavedDates();
+    getAllSavedWeeks();
+    getAllSavedMonths();
+
+    // 6. Broadcast event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('daily_tracker_data_change', { detail: { type: 'import' } })
+      );
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    return {
+      success: true,
+      count: importedDaysCount,
+      weeksCount: importedWeeksCount,
+      monthsCount: importedMonthsCount,
+      settingsRestored,
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, count: 0, error: message };

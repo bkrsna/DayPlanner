@@ -104,7 +104,7 @@ export function useDayData(date: string) {
 
   // Todos
   const addTodo = useCallback(
-    (text: string, priority: Priority = 'medium', tag?: string, estimate?: string, isSpecial: boolean = false) => {
+    (text: string, priority: Priority = 'medium', tag?: string, estimate?: string, isSpecial: boolean = false, category?: string) => {
       if (!text.trim()) return;
       const newTodo: TodoItem = {
         id: `todo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -112,6 +112,7 @@ export function useDayData(date: string) {
         completed: false,
         status: 'todo',
         priority,
+        category: category?.trim() ? category.trim().toLowerCase() : undefined,
         tag: tag?.trim() ? tag.trim().toLowerCase() : undefined,
         estimate: estimate?.trim() || undefined,
         subtasks: [],

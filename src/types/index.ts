@@ -14,6 +14,7 @@ export interface TodoItem {
   completed: boolean;
   status?: TaskStatus;
   priority: Priority;
+  category?: string;
   tag?: string;
   estimate?: string;
   subtasks?: SubTask[];
