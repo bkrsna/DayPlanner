@@ -9,7 +9,7 @@ import {
   getAutoBackupMeta,
   connectBackupDirectory,
   disconnectBackupDirectory,
-  performAutoBackup,
+  performAutoFetch,
   AutoBackupMeta,
 } from '@/lib/autoBackup';
 import {
@@ -33,7 +33,7 @@ interface ExportImportModalProps {
   currentDate: string;
 }
 
-function formatLastSaved(isoString: string | null): string {
+function formatLastSaved(isoString?: string | null): string {
   if (!isoString) return 'Never';
   try {
     const date = new Date(isoString);
@@ -111,19 +111,24 @@ export function ExportImportModal({
     } else if (result.success) {
       setImportStatus({
         type: 'success',
-        message: `Connected to "${result.folderName}". Real-time auto-backup active!`,
+        message: `Connected to "${result.folderName}". Two-way real-time auto-sync active!`,
       });
     }
   };
 
   const handleSyncNow = async () => {
     setIsSyncing(true);
-    const result = await performAutoBackup(true);
+    const result = await performAutoFetch(true);
     setIsSyncing(false);
     if (result.success) {
-      setImportStatus({ type: 'success', message: 'Backup JSON successfully saved to folder!' });
+      setImportStatus({
+        type: 'success',
+        message: result.count !== undefined && result.count > 0
+          ? `Synced ${result.count} days with folder!`
+          : 'Folder and web app are fully in sync!',
+      });
     } else {
-      setImportStatus({ type: 'error', message: result.error || 'Failed to save to folder.' });
+      setImportStatus({ type: 'error', message: result.error || 'Failed to sync with folder.' });
     }
   };
 
@@ -251,13 +256,13 @@ export function ExportImportModal({
         )}
 
         <div className="mt-3.5 space-y-3.5">
-          {/* Section 1: Local Folder Auto-Backup */}
+          {/* Section 1: Local Folder Two-Way Sync */}
           <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 p-3.5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-indigo-500" />
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                  Local Folder Auto-Backup
+                  Two-Way Folder Sync
                 </span>
               </div>
               {isSupported && autoBackupMeta.enabled && (
@@ -265,7 +270,7 @@ export function ExportImportModal({
                   className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                     autoBackupMeta.status === 'synced'
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                      : autoBackupMeta.status === 'saving'
+                      : autoBackupMeta.status === 'saving' || autoBackupMeta.status === 'fetching'
                       ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
                       : autoBackupMeta.status === 'needs_permission'
                       ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
@@ -276,15 +281,16 @@ export function ExportImportModal({
                     className={`w-1.5 h-1.5 rounded-full ${
                       autoBackupMeta.status === 'synced'
                         ? 'bg-emerald-500 animate-pulse'
-                        : autoBackupMeta.status === 'saving'
+                        : autoBackupMeta.status === 'saving' || autoBackupMeta.status === 'fetching'
                         ? 'bg-blue-500 animate-spin'
                         : autoBackupMeta.status === 'needs_permission'
                         ? 'bg-amber-500'
                         : 'bg-red-500'
                     }`}
                   />
-                  {autoBackupMeta.status === 'synced' && 'Auto-Saving Active'}
-                  {autoBackupMeta.status === 'saving' && 'Saving...'}
+                  {autoBackupMeta.status === 'synced' && 'Two-Way Sync Active'}
+                  {autoBackupMeta.status === 'fetching' && 'Loading from Folder...'}
+                  {autoBackupMeta.status === 'saving' && 'Saving to Folder...'}
                   {autoBackupMeta.status === 'needs_permission' && 'Needs Permission'}
                   {autoBackupMeta.status === 'error' && 'Sync Error'}
                   {autoBackupMeta.status === 'idle' && 'Idle'}
@@ -294,12 +300,12 @@ export function ExportImportModal({
 
             {!isSupported ? (
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                Direct folder auto-saving requires Chrome, Edge, Brave, Arc, or Opera desktop. You can still export and restore manually using the tools below.
+                Direct folder synchronization requires Chrome, Edge, Brave, Arc, or Opera desktop. You can still export and restore manually using the tools below.
               </p>
             ) : !autoBackupMeta.enabled ? (
               <div className="space-y-2.5">
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Select a local folder on your computer. DayPlanner will automatically save and sync your full backup JSON (<code className="text-[10px] font-mono bg-zinc-200/60 dark:bg-zinc-800 px-1 py-0.5 rounded">dayplanner-backup.json</code>) there in real time — zero manual backups required.
+                  Select a local folder on your computer. DayPlanner will automatically fetch and load your backup JSON (<code className="text-[10px] font-mono bg-zinc-200/60 dark:bg-zinc-800 px-1 py-0.5 rounded">dayplanner-backup.json</code>) whenever you open the web app, and continuously sync all changes back in real time.
                 </p>
                 <button
                   onClick={handleConnectFolder}
@@ -307,7 +313,7 @@ export function ExportImportModal({
                   className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   <Folder className="w-3.5 h-3.5" />
-                  {isSyncing ? 'Connecting...' : 'Select Backup Folder'}
+                  {isSyncing ? 'Connecting...' : 'Select Sync Folder'}
                 </button>
               </div>
             ) : (
@@ -325,9 +331,9 @@ export function ExportImportModal({
                     </div>
                   </div>
                   <div className="text-[10px] text-zinc-400 shrink-0 text-right">
-                    <div>Last saved</div>
+                    <div>Last synced</div>
                     <div className="font-medium text-zinc-600 dark:text-zinc-300">
-                      {formatLastSaved(autoBackupMeta.lastSavedAt)}
+                      {formatLastSaved(autoBackupMeta.lastSavedAt || autoBackupMeta.lastFetchedAt)}
                     </div>
                   </div>
                 </div>
@@ -351,7 +357,7 @@ export function ExportImportModal({
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 text-xs font-medium rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Saving...' : 'Sync Now'}
+                    {isSyncing ? 'Syncing...' : 'Sync Now'}
                   </button>
                   <button
                     onClick={handleConnectFolder}

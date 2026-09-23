@@ -1,10 +1,11 @@
-import { exportAllDataAsJSON } from './storage';
+import { exportAllDataAsJSON, mergeDataFromJSON } from './storage';
 
 export interface AutoBackupMeta {
   enabled: boolean;
   folderName: string;
   lastSavedAt: string | null;
-  status: 'idle' | 'saving' | 'synced' | 'error' | 'needs_permission';
+  lastFetchedAt: string | null;
+  status: 'idle' | 'saving' | 'fetching' | 'synced' | 'error' | 'needs_permission';
   errorMessage?: string;
 }
 
@@ -112,6 +113,7 @@ export function getAutoBackupMeta(): AutoBackupMeta {
       enabled: false,
       folderName: '',
       lastSavedAt: null,
+      lastFetchedAt: null,
       status: 'idle',
     };
   }
@@ -123,6 +125,7 @@ export function getAutoBackupMeta(): AutoBackupMeta {
         enabled: false,
         folderName: '',
         lastSavedAt: null,
+        lastFetchedAt: null,
         status: 'idle',
       };
     }
@@ -132,6 +135,7 @@ export function getAutoBackupMeta(): AutoBackupMeta {
       enabled: false,
       folderName: '',
       lastSavedAt: null,
+      lastFetchedAt: null,
       status: 'idle',
     };
   }
@@ -187,6 +191,45 @@ export async function verifyDirectoryPermission(
   }
 }
 
+// Concurrency lock for sync operations
+let isSyncOperationInProgress = false;
+
+// Read the backup JSON from the directory handle
+export async function readBackupFromDirectory(handle: FileSystemDirectoryHandle): Promise<{
+  exists: boolean;
+  content?: string;
+  lastModified?: number;
+  error?: string;
+}> {
+  try {
+    const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: false });
+    const file = await fileHandle.getFile();
+    const content = await file.text();
+    return { exists: true, content, lastModified: file.lastModified };
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'NotFoundError') {
+      return { exists: false };
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    return { exists: false, error: message };
+  }
+}
+
+// Write the backup JSON to the directory handle
+export async function writeBackupToDirectory(handle: FileSystemDirectoryHandle): Promise<boolean> {
+  try {
+    const jsonContent = exportAllDataAsJSON();
+    const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(jsonContent);
+    await writable.close();
+    return true;
+  } catch (err) {
+    console.error('writeBackupToDirectory failed:', err);
+    return false;
+  }
+}
+
 // Connect a new directory using the folder picker
 export async function connectBackupDirectory(): Promise<{
   success: boolean;
@@ -219,7 +262,27 @@ export async function connectBackupDirectory(): Promise<{
     // Save to IndexedDB
     await saveDirectoryHandle(handle);
 
-    // Initial write
+    // Check if the backup file already exists in this folder!
+    const readResult = await readBackupFromDirectory(handle);
+    if (readResult.exists && readResult.content) {
+      // Folder already contains a backup! Merge file data into local storage.
+      const mergeResult = mergeDataFromJSON(readResult.content, { source: 'auto_backup_fetch' });
+      const lastSavedAt = new Date().toISOString();
+      if (mergeResult.hasLocalNewer) {
+        await writeBackupToDirectory(handle);
+      }
+      setAutoBackupMeta({
+        enabled: true,
+        folderName: handle.name,
+        lastSavedAt,
+        lastFetchedAt: new Date().toISOString(),
+        status: 'synced',
+        errorMessage: undefined,
+      });
+      return { success: true, folderName: handle.name };
+    }
+
+    // If file doesn't exist yet, perform initial write
     const writeOk = await writeBackupToDirectory(handle);
 
     if (writeOk) {
@@ -227,6 +290,7 @@ export async function connectBackupDirectory(): Promise<{
         enabled: true,
         folderName: handle.name,
         lastSavedAt: new Date().toISOString(),
+        lastFetchedAt: new Date().toISOString(),
         status: 'synced',
         errorMessage: undefined,
       });
@@ -241,7 +305,6 @@ export async function connectBackupDirectory(): Promise<{
       return { success: false, error: 'Failed to write initial backup file.' };
     }
   } catch (err: unknown) {
-    // If user cancelled the picker dialog
     if (err instanceof DOMException && err.name === 'AbortError') {
       return { success: false, error: 'Directory selection cancelled.' };
     }
@@ -257,23 +320,113 @@ export async function disconnectBackupDirectory(): Promise<void> {
     enabled: false,
     folderName: '',
     lastSavedAt: null,
+    lastFetchedAt: null,
     status: 'idle',
     errorMessage: undefined,
   });
 }
 
-// Write the backup JSON to the directory handle
-async function writeBackupToDirectory(handle: FileSystemDirectoryHandle): Promise<boolean> {
+// Perform auto-fetch and merge from the directory handle
+export async function performAutoFetch(
+  userInitiated: boolean = false
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const meta = getAutoBackupMeta();
+  if (!meta.enabled) {
+    return { success: false, error: 'Auto-backup is not enabled' };
+  }
+
+  const handle = await getSavedDirectoryHandle();
+  if (!handle) {
+    setAutoBackupMeta({
+      status: 'error',
+      errorMessage: 'Saved directory handle is no longer available. Please re-select the folder.',
+    });
+    return { success: false, error: 'Directory handle missing' };
+  }
+
+  const hasPermission = await verifyDirectoryPermission(handle, userInitiated);
+  if (!hasPermission) {
+    setAutoBackupMeta({
+      status: 'needs_permission',
+      errorMessage: `Permission required to sync with folder "${meta.folderName}". Click Reconnect to authorize.`,
+    });
+    return { success: false, error: 'Permission required' };
+  }
+
+  if (isSyncOperationInProgress) {
+    return { success: true };
+  }
+
+  isSyncOperationInProgress = true;
+  setAutoBackupMeta({ status: 'fetching' });
+
   try {
-    const jsonContent = exportAllDataAsJSON();
-    const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(jsonContent);
-    await writable.close();
-    return true;
-  } catch (err) {
-    console.error('writeBackupToDirectory failed:', err);
-    return false;
+    const readResult = await readBackupFromDirectory(handle);
+
+    if (!readResult.exists) {
+      // File does not exist in folder yet. If local has data, create it.
+      const jsonContent = exportAllDataAsJSON();
+      const parsed = JSON.parse(jsonContent || '{}');
+      const hasData =
+        (parsed.days && Object.keys(parsed.days).length > 0) ||
+        (parsed.weeks && Object.keys(parsed.weeks).length > 0) ||
+        (parsed.months && Object.keys(parsed.months).length > 0);
+
+      if (hasData) {
+        await writeBackupToDirectory(handle);
+      }
+
+      setAutoBackupMeta({
+        status: 'synced',
+        lastFetchedAt: new Date().toISOString(),
+        errorMessage: undefined,
+      });
+      return { success: true, count: 0 };
+    }
+
+    if (readResult.error || typeof readResult.content !== 'string') {
+      setAutoBackupMeta({
+        status: 'error',
+        errorMessage: readResult.error || 'Failed to read backup file from folder.',
+      });
+      return { success: false, error: readResult.error };
+    }
+
+    // Merge file data into local storage
+    const mergeResult = mergeDataFromJSON(readResult.content, { source: 'auto_backup_fetch' });
+
+    if (!mergeResult.success) {
+      setAutoBackupMeta({
+        status: 'error',
+        errorMessage: mergeResult.error || 'Failed to parse backup data.',
+      });
+      return { success: false, error: mergeResult.error };
+    }
+
+    // If local had any newer items or additional days, save merged data back to disk
+    let lastSavedAt = meta.lastSavedAt;
+    if (mergeResult.hasLocalNewer) {
+      await writeBackupToDirectory(handle);
+      lastSavedAt = new Date().toISOString();
+    }
+
+    setAutoBackupMeta({
+      status: 'synced',
+      lastFetchedAt: new Date().toISOString(),
+      lastSavedAt: lastSavedAt || new Date().toISOString(),
+      errorMessage: undefined,
+    });
+
+    return { success: true, count: mergeResult.count };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    setAutoBackupMeta({
+      status: 'error',
+      errorMessage: message,
+    });
+    return { success: false, error: message };
+  } finally {
+    isSyncOperationInProgress = false;
   }
 }
 
@@ -304,21 +457,30 @@ export async function performAutoBackup(
     return { success: false, error: 'Permission required' };
   }
 
+  if (isSyncOperationInProgress) {
+    return { success: true };
+  }
+
+  isSyncOperationInProgress = true;
   setAutoBackupMeta({ status: 'saving' });
 
-  const success = await writeBackupToDirectory(handle);
-  if (success) {
-    setAutoBackupMeta({
-      status: 'synced',
-      lastSavedAt: new Date().toISOString(),
-      errorMessage: undefined,
-    });
-    return { success: true };
-  } else {
-    setAutoBackupMeta({
-      status: 'error',
-      errorMessage: 'Failed to write backup file to disk.',
-    });
-    return { success: false, error: 'Failed to write file' };
+  try {
+    const success = await writeBackupToDirectory(handle);
+    if (success) {
+      setAutoBackupMeta({
+        status: 'synced',
+        lastSavedAt: new Date().toISOString(),
+        errorMessage: undefined,
+      });
+      return { success: true };
+    } else {
+      setAutoBackupMeta({
+        status: 'error',
+        errorMessage: 'Failed to write backup file to disk.',
+      });
+      return { success: false, error: 'Failed to write file' };
+    }
+  } finally {
+    isSyncOperationInProgress = false;
   }
 }
